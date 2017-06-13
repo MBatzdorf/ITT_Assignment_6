@@ -1,0 +1,29 @@
+This paper by MacKenzie and Soukoreff(2002) gives an overview of state of the art mobile text
+entry technologies. 
+In the beginning, they state two main methods to improve text entry performance. These are movement minimisation and
+language prediction. 
+Movement minimisation has the goal to reduce the distance a finger/pen has to take when interacting with a mobile device
+in order to fasten interaction, whereas language prediction makes interaction faster by using statistical models. An example
+would be autocompletion which could also be found in the T9 technique years ago. 
+In the following paragraph, an overview over key-based text entry shall be given:
+One technique for text entry is e.g. the telephone keypad which consists of 12 keys with numbers
+and letters on it. Because text entry via keypad is quite ambiguous, disambiguation can be achieved with on of
+the following three approaches that are multi-tap (clicking multiple times on a key until the desired letter appears)
+, two-key-method (user hits two keys successively to determine the letter to be selected) and the one-key technique with disambiguation
+which uses statistical methods, T9 is an example for this as already mentioned.
+A second key-based text entry method are small qwerty keyboards that are often seen at Blackberry mobile devices.
+Third, five-key text entry which is often used on very small devices is also a very popular key-based text entry technique. It can be found at games when one has
+to enter the highscore for instance. In total, there are five key. Four of them are cursor keys (left, right, up, down) and the fifth one 
+is the enter key. As the characters are ordered in alphabetic order, movement times aren't optimized and text entry takes quite a long time.
+Following, the focus shall be shifted to stylus-based text entry:
+There a pointing device is used, which is a pen normally, to select characters by gesture and tapping.
+One way is handwriting recognition. Because normal handwriting recognition is a difficult undertaking, "meta" languages like unistrokes or Graffiti
+have been invented to simplify recognition as segmentation isn't necessary anymore.
+Another stylus-based text entry method is gesture-based text input. Examples for this are Cirrin, Quikwriting and T-Cube. Letters are ordered in a 
+circle like structure. Unlike character recognition-based input techniques, gesture-based text input methods, interpret stylus movements as characters.
+In Cirrin, this happens for instance by moving into a character located in the circle and moving out to display it.
+Finally, soft keyboards are also a stylus-based text entry method. These are keyboards directly implemented on the display and are used in every smartphone
+these days.
+
+- KÜRZEN
+- EVENTUELL WENIGER UND DAFÜR GENAUER?

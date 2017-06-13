@@ -1,0 +1,23 @@
+1. COMPASS: Rotational Keyboard on Non-Touch Smartwatches
+Yi et al. (2017) developed COMPASS, a multi-cursor , bezel-based, text entry technique for non-touch
+smartwatches. The user can enter text by rotating a bezel that rotates three cursors simultaneously, 
+then press a button to enter the selected character. When doing a long press, the user enters word selection mode and
+then can select a word with a single cursor by rotating the bezel and confirm the selection.
+User studies showed that pick-up speeds from 9.3 WPM to 12.5 WPM (Yi et al. 2017: 9) can be reached. This interaction
+technique is a good method to solve e.g. the fat finger problem and to reduce battery life as no touchscreen is required.
+
+2. Investigating Tilt-based Gesture Keyboard Entry for Single-Handed Text Entry on Large Devices
+Yeo et al. (2017) introduce Shape Writing in Motion (SWiM) which is a tilt-based, gesture keyboard text entry technique that 
+is especially useful when only one hand is available and the user has a device with a large screen.
+This pointing technique supports entering one word per gesture and can be used on phones, tablets and smartwatches.
+In this case, the pointer can be a ball that the user tilts over the keyboard and that draws kind of a line over the letters that the user wants to select in order. At first,
+one has to tap on the so called "chat head" which is sort of a circle-shaped region in order to start input, a second tap
+finishes the input. The study has shown, that SWiM is cognitively quite demanding, however, the authors don't have the intention
+to replace common input techniques but to facilitate text input when only one hand is available.
+
+3. Handsfree Omnidirectional VR Navigation using Head Tilt
+Tregillus et al. (2017) present a method for navigating in mobile VR by tilting the head to move forward and indicate the
+direction to go. Thereby, the user has to lean forward to move and lean right or left to make little corrections in his travel.
+The study showed that user performed tasks 15 seconds faster when using head tilt than other methods.
+However, it was stated that head tilt isn't suitable for all VR applications as vertical head tilt is critical as mentioned above.
+Nevertheless, it is quite useful to perform handsfree VR locomotion.
