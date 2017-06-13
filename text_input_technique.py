@@ -24,8 +24,8 @@ class StandardInputMethod(QtCore.QObject):
             return False # ignore events that we injected ourselves
         if not ev.type() in [Qt.QKeyEvent.KeyPress, Qt.QKeyEvent.KeyRelease]:
             return False # ignore everything else
-        if re.match(ChordInputMethod.VALID_LETTERS, ev.text().lower()) is None and ev.key() != self.WORD_DELIMITER and ev.key() != self.SENTENCE_DELIMITER:
-            return False # only check this _after_ we are sure that we have a QKeyEvent!
+        #if re.match(ChordInputMethod.VALID_LETTERS, ev.text().lower()) is None and ev.key() != self.WORD_DELIMITER and ev.key() != self.SENTENCE_DELIMITER:
+        #    return False # only check this _after_ we are sure that we have a QKeyEvent!
         if ev.isAutoRepeat(): # completely eliminate these!
             return True
         # finally, we only have interesting key presses/releases left
@@ -33,14 +33,6 @@ class StandardInputMethod(QtCore.QObject):
             self.keys.append(ev.text())
             return True # always filter press events
         elif ev.type() == Qt.QKeyEvent.KeyRelease: # release chord once one of the keys is released
-            if ev.key() == self.WORD_DELIMITER:
-                print("Word ended: " + ''.join(self.currentWord))
-                self.currentWord = []
-            if ev.key() == self.SENTENCE_DELIMITER:
-                print("Word ended: " + ''.join(self.currentWord))
-                self.currentWord = []
-                print("Sentence ended: " + ''.join(self.currentSentence))
-                self.currentSentence = []
             if len(self.keys) > 0:
                 result = self.get_word()
                 Qt.qApp.postEvent(watched_textedit, QtGui.QKeyEvent(Qt.QKeyEvent.KeyPress, 0, QtCore.Qt.NoModifier, text = result))
@@ -48,6 +40,16 @@ class StandardInputMethod(QtCore.QObject):
                 self.currentWord += result
                 self.currentSentence += result
                 self.keys = []
+            if ev.key() == self.WORD_DELIMITER:
+                Qt.qApp.postEvent(watched_textedit,
+                                  QtGui.QKeyEvent(Qt.QKeyEvent.KeyPress, QtCore.Qt.Key_Space, QtCore.Qt.NoModifier, text = " "))
+                self.currentWord = []
+            if ev.key() == self.SENTENCE_DELIMITER:
+                Qt.qApp.postEvent(watched_textedit,
+                                  QtGui.QKeyEvent(Qt.QKeyEvent.KeyPress, QtCore.Qt.Key_Return, QtCore.Qt.NoModifier,
+                                                  text="\n"))
+                self.currentWord = []
+                self.currentSentence = []
             return True # also when non-printables are released (sensible?)
         else:
             print("Should'nt arrive here: " + str(ev))
