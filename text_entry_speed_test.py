@@ -6,9 +6,11 @@ from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 import re
 import text_input_technique as input_technique
 
-class TextLogger(QtWidgets.QTextEdit):
 
-    SENTENCES = ["Es war einmal ein Mann.", "Der hatte einen Hut.", "Der Mann ging gerne spazieren!"]
+class TextLogger(QtWidgets.QTextEdit):
+    SENTENCES = ["Mein Hund hat dich lieb", "Viele Leute mögen dich.", "Der Mann ging nie spazieren", "Der Junge weiß nicht was er tut", "Wo rennst du hin",
+                 "Ich sehe dich nicht", "Es war ein Mann.", "Ich mag das Eis", "Geh nun zum Auto",
+                 "Der hatte einen Hut.", ]
 
     def __init__(self):
         super(TextLogger, self).__init__()
@@ -74,11 +76,13 @@ class TextLogger(QtWidgets.QTextEdit):
     ''' TODO: This class should print a csv line to stdout
         Currently only debug information is printed
     '''
+
     def logToStdOut(self, time, done):
         if done:
             print("Time needed for sentence: " + str(time))
             return
         print("Time needed for word: " + str(time))
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
@@ -87,6 +91,7 @@ def main():
     text_logger.installEventFilter(chord_input)
 
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()

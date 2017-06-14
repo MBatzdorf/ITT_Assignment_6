@@ -1,0 +1,19 @@
+UV: 
+- text_entry_technique (levels: qwertz-keyboard, chord input)
+- text_length (levels: short (~ 10 - 15 characters), long (> 20 characters))
+
+AV:
+- speed
+
+CV:
+- keyboard (ASUS notebook)
+- calm room
+- participants take seat at a desk
+- notebook is in front of them and not too far away
+
+Training:
+3 sentences
+
+- darf Teilnehmer Wort nach Fehler wiederholen?
+- Probleme mit Ghosting
+- UVs gut? (in Bezug auf Anzahl Characters)
