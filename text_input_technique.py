@@ -99,7 +99,24 @@ class ChordInputMethod(StandardInputMethod):
               frozenset(["h", "u", "n", "d"]): "Hund",
               frozenset(["h", "a", "t"]): "hat",
               frozenset(["l", "i", "e", "b"]): "lieb",
-              frozenset(["m", "e", "i", "n"]): "mein"
+              frozenset(["m", "e", "i", "n"]): "mein",
+              frozenset(["i", "s", "t"]): "ist",
+              frozenset(["h", "e", "i", "ß"]): "heiß",
+              frozenset(["h", "i", "e", "r"]): "hier",
+              frozenset(["s", "p", "i", "e", "l"]): "Spiel",
+              frozenset(["g", "u", "t"]): "gut",
+              frozenset(["w", "i", "r"]): "wir",
+              frozenset(["e", "s", "n"]): "essen",
+              frozenset(["z", "u"]): "zu",
+              frozenset(["v", "i", "e", "l"]): "viel",
+              frozenset(["s", "c", "h", "i", "e", "ß"]): "Schieß",
+              frozenset(["t", "o", "r"]): "Tor",
+              frozenset(["t", "e", "r", "m", "i", "n"]): "Termin",
+              frozenset(["v", "e", "r", "p", "a", "s", "t"]): "verpasst",
+              frozenset(["l", "e", "i", "d", "r"]): "leider",
+              frozenset(["h", "a", "b"]): "hab",
+              frozenset(["z", "e", "i", "t"]): "Zeit",
+              frozenset(["k", "i", "e", "n"]): "keine"
               }
 
     def __init__(self):
