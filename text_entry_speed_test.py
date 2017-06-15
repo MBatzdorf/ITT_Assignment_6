@@ -5,9 +5,8 @@ import sys
 import configparser
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 import re
-import numpy
+import csv
 from random import randint
-import time
 import text_input_technique as input_technique
 
 
@@ -15,11 +14,11 @@ class TextLogger(QtWidgets.QTextEdit):
     SHORT_SENTENCES = ["Wo rennst du hin.", "Ich sehe dich nicht.", "Es war ein Mann.", "Ich mag das Eis.",
                        "Geh nun zum Auto.", "Der hat einen Hut.", "Es ist heiß hier.", "Das Spiel ist gut!",
                        "Wir essen zu viel!", "Schieß ein Tor!"]
-    LONG_SENTENCES = ["Der Mann ging nie spazieren", "Mein Hund hat dich lieb", "Viele Leute mögen dich.",
-                      "Der Junge weiß nicht was er tut", "Ich hab den Termin verpasst.", "Leider hab ich keine Zeit",
+    LONG_SENTENCES = ["Der Mann ging nie spazieren.", "Mein Hund hat dich lieb.", "Viele Leute mögen dich.",
+                      "Der Junge weiß nicht was er tut.", "Ich hab den Termin verpasst.", "Leider hab ich keine Zeit.",
                       ]
 
-    def __init__(self, user_id, conditions, repetitions=1):
+    def __init__(self, user_id, conditions, repetitions=4):
         super(TextLogger, self).__init__()
         self.user_id = user_id
         self.conditions = conditions
@@ -32,6 +31,7 @@ class TextLogger(QtWidgets.QTextEdit):
         self.isFirstLetter = True
         self.sentenceTimer = QtCore.QTime()
         self.wordTimer = QtCore.QTime()
+        self.initLogging()
         self.init_trials(self.conditions, repetitions)
         self.initUI()
         self.prepareNextTrial()
@@ -49,6 +49,13 @@ class TextLogger(QtWidgets.QTextEdit):
         self.setWindowTitle('TextLogger')
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.show()
+
+    def initLogging(self):
+        self.logfile = open("user" + str(self.user_id) + ".csv", "a")
+        self.out = csv.DictWriter(self.logfile,
+                                  ["user_id", "presented_sentence", "transcribed_sentence", "text_input_technique", "text_length",
+                                   "total_time (ms)", "wpm", "timestamp (ISO)"], delimiter=";", quoting=csv.QUOTE_ALL)
+        self.out.writeheader()
 
     def prepareNextTrial(self):
         if self.elapsed < len(self.trials):
@@ -100,8 +107,8 @@ class TextLogger(QtWidgets.QTextEdit):
         return "Use the STANDARD TYPING technique."
 
     ''' Returns a timestamp'''
-
-    def timestamp(self):
+    @staticmethod
+    def timestamp():
         return QtCore.QDateTime.currentDateTime().toString(QtCore.Qt.ISODate)
 
     def keyPressEvent(self, ev):
@@ -128,7 +135,7 @@ class TextLogger(QtWidgets.QTextEdit):
             wordTime = self.stop_word_time_measurement()
             self.sentenceTime = self.stop_sentence_time_measurement()
             self.word_times.append(wordTime)
-            self.logToStdOut(self.SHORT_SENTENCES[self.elapsed - 1], self.current_text, self.calculate_wpm())
+            self.logTime(self.SHORT_SENTENCES[self.elapsed - 1], self.current_text, self.calculate_wpm())
 
             self.prepareNextTrial()
 
@@ -156,13 +163,18 @@ class TextLogger(QtWidgets.QTextEdit):
         time_needed = self.wordTimer.elapsed()
         return time_needed
 
-    def logToStdOut(self, presented_text, transcribed_text, wpm):
+    def logTime(self, presented_text, transcribed_text, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
         log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (self.user_id, presented_text, self.current_trial.get_current_condition()[1], self.current_trial.get_current_condition()[0],
                                                                                 transcribed_text.strip(), self.sentenceTime,
                                                                                 wpm, self.timestamp())
         print(log_line)
+        current_values = {"user_id": self.user_id, "presented_sentence": presented_text,
+                          "transcribed_sentence": self.current_trial.get_current_condition()[1], "text_input_technique": self.current_trial.get_current_condition()[0],
+                          "text_length": transcribed_text.strip(), "total_time (ms)": self.sentenceTime,
+                          "wpm": wpm, "timestamp (ISO)": self.timestamp()}
+        self.out.writerow(current_values)
 
 
 class Trial:
