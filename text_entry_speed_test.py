@@ -52,7 +52,6 @@ class TextLogger(QtWidgets.QTextEdit):
 
     def prepareNextTrial(self):
         if self.elapsed < len(self.trials):
-            #self.current_trial = self.trials[self.elapsed]
             newTrial = self.trials[self.elapsed]
             if newTrial.get_current_condition()[1] != self.current_trial.get_current_condition()[1]:
                 self.startNext = False
@@ -107,23 +106,23 @@ class TextLogger(QtWidgets.QTextEdit):
 
     def keyPressEvent(self, ev):
         super(TextLogger, self).keyPressEvent(ev)
-        # if ev.key() != QtCore.Qt.Key_Return:
-        # print(ev.text())
-        if ev.key() == QtCore.Qt.Key_Space:
-            if not self.startNext:
+
+        if not self.startNext:
+            if ev.key() == QtCore.Qt.Key_Space:
                 self.startNext = True
                 self.prepareNextTrial()
-                return
-            wordTime = self.stop_word_time_measurement()
-            self.word_times.append(wordTime)
-            # self.logToStdOut(wordTime, False)
-            self.start_word_time_measurement()
+            return
 
         self.current_text += ev.text()
         if self.isFirstLetter:
             self.start_sentence_time_measurement()
             self.start_word_time_measurement()
             self.isFirstLetter = False
+
+        if ev.key() == QtCore.Qt.Key_Space:
+            wordTime = self.stop_word_time_measurement()
+            self.word_times.append(wordTime)
+            self.start_word_time_measurement()
 
         if ev.key() == QtCore.Qt.Key_Return:
             wordTime = self.stop_word_time_measurement()
@@ -136,7 +135,8 @@ class TextLogger(QtWidgets.QTextEdit):
     def calculate_wpm(self):
         if self.sentenceTime == 0:
             return 0
-        wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
+        #wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
+        wpm = float(len(self.word_times))*(60 / (self.sentenceTime/1000))
         return wpm
 
     def keyReleaseEvent(self, ev):
@@ -156,21 +156,13 @@ class TextLogger(QtWidgets.QTextEdit):
         time_needed = self.wordTimer.elapsed()
         return time_needed
 
-    ''' TODO: This class should print a csv line to stdout
-        Currently only debug information is printed
-    '''
-
     def logToStdOut(self, presented_text, transcribed_text, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
-        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%d\";\"%s\"" % (self.user_id, presented_text, self.current_trial.get_current_condition()[1], self.current_trial.get_current_condition()[0],
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (self.user_id, presented_text, self.current_trial.get_current_condition()[1], self.current_trial.get_current_condition()[0],
                                                                                 transcribed_text.strip(), self.sentenceTime,
                                                                                 wpm, self.timestamp())
         print(log_line)
-        """if done:
-            print("Time needed for sentence: " + str(time))
-            return
-        print("Time needed for word: " + str(time))"""
 
 
 class Trial:
