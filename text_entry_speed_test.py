@@ -6,6 +6,8 @@ import configparser
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 import re
 import numpy
+from random import randint
+import time
 import text_input_technique as input_technique
 
 
@@ -23,22 +25,24 @@ class TextLogger(QtWidgets.QTextEdit):
         self.conditions = conditions
         self.elapsed = 0
         self.word_times = []
+        self.trials = []
+        self.current_trial = Trial("", "")
         self.current_text = ""
+        self.current_input_technique = None
+        self.isFirstLetter = True
         self.sentenceTimer = QtCore.QTime()
         self.wordTimer = QtCore.QTime()
         self.init_trials(self.conditions, repetitions)
-        self.prepareNextTest()
         self.initUI()
+        self.prepareNextTrial()
         print(
             "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
             "\"text_length\";\"total_time\";\"wpm\";\"timestamp (ISO)\"")
 
     def init_trials(self, conditions, repetitions):
-        self.trials = repetitions * conditions
-        print(self.trials)
-
-        for i in range(len(self.trials)):
-            self.trials[i] = Trial(self.trials[i][0], self.trials[i][1])
+        for i in range(len(conditions)):
+            for j in range(repetitions):
+                self.trials.append(Trial(conditions[i][0], conditions[i][1]))
 
     def initUI(self):
         self.setGeometry(0, 0, 400, 200)
@@ -46,18 +50,55 @@ class TextLogger(QtWidgets.QTextEdit):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.show()
 
-    def prepareNextTest(self):
-        if self.elapsed < len(self.SHORT_SENTENCES):
+    def prepareNextTrial(self):
+        if self.elapsed < len(self.trials):
+            #self.current_trial = self.trials[self.elapsed]
+            newTrial = self.trials[self.elapsed]
+            if newTrial.get_current_condition()[1] != self.current_trial.get_current_condition()[1]:
+                self.startNext = False
+                self.current_trial = newTrial
+                self.prepareNextTest()
+                return;
+            self.current_trial = newTrial
             self.isFirstLetter = True
             self.current_text = ""
 
-            self.setText("\n" + self.SHORT_SENTENCES[self.elapsed])
+            self.setText("\n" + self.getNextSentence() + "\n" + "\n" + self.getInputMethodAsString())
+
+
             self.elapsed += 1
             self.stop_sentence_time_measurement()
             self.stop_word_time_measurement()
         else:
             sys.stderr.write("All trials done!")
             sys.exit(1)
+
+    def prepareNextTest(self):
+        self.removeEventFilter(self.current_input_technique)
+        if self.current_trial.get_current_condition()[1] == "C":
+            self.setText("Press Space to start the next trial with CHORD input technique")
+            self.current_input_technique = input_technique.ChordInputMethod()
+            self.installEventFilter(self.current_input_technique)
+        else:
+            self.setText("Press Space to start the next trial with STANDARD input technique")
+            self.current_input_technique = input_technique.StandardInputMethod()
+            self.installEventFilter(self.current_input_technique)
+        return
+
+    def getNextSentence(self):
+        if self.current_trial.get_current_condition()[0] == "S":
+            if self.elapsed < len(self.SHORT_SENTENCES):
+                return self.SHORT_SENTENCES[self.elapsed]
+            return self.SHORT_SENTENCES[randint(0, len(self.SHORT_SENTENCES) - 1)]
+        else:
+            if self.elapsed < len(self.LONG_SENTENCES):
+                return self.LONG_SENTENCES[self.elapsed]
+            return self.LONG_SENTENCES[randint(0, len(self.LONG_SENTENCES)- 1)]
+
+    def getInputMethodAsString(self):
+        if self.current_trial.get_current_condition()[1] == "C":
+            return "Use CHORDINPUT for assistance."
+        return "Use the STANDARD TYPING technique."
 
     ''' Returns a timestamp'''
 
@@ -68,31 +109,33 @@ class TextLogger(QtWidgets.QTextEdit):
         super(TextLogger, self).keyPressEvent(ev)
         # if ev.key() != QtCore.Qt.Key_Return:
         # print(ev.text())
+        if ev.key() == QtCore.Qt.Key_Space:
+            if not self.startNext:
+                self.startNext = True
+                self.prepareNextTrial()
+                return
+            wordTime = self.stop_word_time_measurement()
+            self.word_times.append(wordTime)
+            # self.logToStdOut(wordTime, False)
+            self.start_word_time_measurement()
+
         self.current_text += ev.text()
         if self.isFirstLetter:
             self.start_sentence_time_measurement()
             self.start_word_time_measurement()
             self.isFirstLetter = False
 
-        if ev.key() == QtCore.Qt.Key_Space:
-            wordTime = self.stop_word_time_measurement()
-            self.word_times.append(wordTime)
-            # self.logToStdOut(wordTime, False)
-            self.start_word_time_measurement()
-
         if ev.key() == QtCore.Qt.Key_Return:
             wordTime = self.stop_word_time_measurement()
             self.sentenceTime = self.stop_sentence_time_measurement()
             self.word_times.append(wordTime)
-            # self.current_text = ev.text()
-            # self.logToStdOut(wordTime, False)
-            # self.logToStdOut(sentenceTime, True)
-            # print(self.current_text.strip("\n"))
             self.logToStdOut(self.SHORT_SENTENCES[self.elapsed - 1], self.current_text, self.calculate_wpm())
 
-            self.prepareNextTest()
+            self.prepareNextTrial()
 
     def calculate_wpm(self):
+        if self.sentenceTime == 0:
+            return 0
         wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
         return wpm
 
@@ -120,7 +163,7 @@ class TextLogger(QtWidgets.QTextEdit):
     def logToStdOut(self, presented_text, transcribed_text, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
-        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%d\";\"%s\"" % (self.user_id, presented_text, "C", "S",
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%d\";\"%s\"" % (self.user_id, presented_text, self.current_trial.get_current_condition()[1], self.current_trial.get_current_condition()[0],
                                                                                 transcribed_text.strip(), self.sentenceTime,
                                                                                 wpm, self.timestamp())
         print(log_line)
@@ -163,8 +206,6 @@ def main():
         user_id, conditions = parse_ini_file(sys.argv[1])
     text_logger = TextLogger(user_id, conditions)
     text_entry_test = TextEntryTest
-    chord_input = input_technique.ChordInputMethod()
-    text_logger.installEventFilter(chord_input)
 
     sys.exit(app.exec_())
     # except Exception:
