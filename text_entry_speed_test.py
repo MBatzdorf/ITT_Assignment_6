@@ -28,12 +28,10 @@ class TextTest(QtWidgets.QTextEdit):
         self.logger = TestLogger(user_id, True, True)
         self.initUI()
         self.prepareNextTrial()
-        print(
-            "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
-            "\"text_length\";\"total_time\";\"wpm\";\"timestamp (ISO)\"")
+
 
     def initUI(self):
-        self.setGeometry(0, 0, 400, 200)
+        self.setGeometry(0, 0, 800, 200)
         self.setWindowTitle('TextLogger')
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.showInstructions()
@@ -80,15 +78,14 @@ class TextTest(QtWidgets.QTextEdit):
                 self.startNext = True
                 self.prepareNextTrial()
             return
-
+        self.logger.log_event("key_pressed", ev.key(), ev.text())
         super(TextTest, self).keyPressEvent(ev)
-
         self.current_text += ev.text()
         if self.isFirstLetter:
             self.start_sentence_time_measurement()
             self.start_word_time_measurement()
             self.isFirstLetter = False
-
+            
         if ev.key() == QtCore.Qt.Key_Space:
             wordTime = self.stop_word_time_measurement()
             self.word_times.append(wordTime)
@@ -98,7 +95,7 @@ class TextTest(QtWidgets.QTextEdit):
             wordTime = self.stop_word_time_measurement()
             self.sentenceTime = self.stop_sentence_time_measurement()
             self.word_times.append(wordTime)
-            self.logger.log_time(self.current_trial, self.current_text, self.sentenceTime, self.calculate_wpm())
+            self.logger.log_stats(self.current_trial, self.current_text, self.sentenceTime, self.calculate_wpm())
             self.prepareNextTrial()
 
     def calculate_wpm(self):
@@ -109,6 +106,9 @@ class TextTest(QtWidgets.QTextEdit):
         return wpm
 
     def keyReleaseEvent(self, ev):
+        if not self.startNext:
+            return
+        self.logger.log_event("key_released", ev.key(), ev.text())
         super(TextTest, self).keyReleaseEvent(ev)
 
     def start_sentence_time_measurement(self):
@@ -132,18 +132,27 @@ class TestLogger(object):
         self.print_log = print_to_log
         self.print_file = print_to_file
         self.user_id = user_id
-        self.logfile = open("user" + str(user_id) + ".csv", "a")
-        self.out = csv.DictWriter(self.logfile,
+        self.stats_logfile = open("stats_user" + str(user_id) + ".csv", "a")
+        self.stats_out = csv.DictWriter(self.stats_logfile,
                                   ["user_id", "presented_sentence", "transcribed_sentence", "text_input_technique",
-                                   "text_length",
                                    "total_time (ms)", "wpm", "timestamp (ISO)"], delimiter=";", quoting=csv.QUOTE_ALL)
+        self.events_logfile = open("events_user" + str(user_id) + ".csv", "a")
+        self.events_out = csv.DictWriter(self.events_logfile,
+                                        ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"], delimiter=";",
+                                        quoting=csv.QUOTE_ALL)
         if self.print_file:
-            self.out.writeheader()
+            self.stats_out.writeheader()
+            self.events_out.writeheader()
+        print("Fields for stats logging: "
+            "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
+            "\"total_time\";\"wpm\";\"timestamp (ISO)\"")
+        print("Fields for event logging: "
+              "\"user_id\";\"event_type\";\"event_key\";\"event_text\";\"timestamp (ISO)\"")
 
-    def log_time(self, trial, transcribed_text, time_needed, wpm):
+    def log_stats(self, trial, transcribed_text, time_needed, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
-        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (self.user_id, trial.get_text(), trial.get_text_input_technique(), trial.get_text_length(),
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (self.user_id, trial.get_text(), trial.get_text_input_technique(),
                                                                                 transcribed_text.strip(), time_needed,
                                                                                 wpm, self.timestamp())
         if self.print_log:
@@ -151,10 +160,24 @@ class TestLogger(object):
 
         current_values = {"user_id": self.user_id, "presented_sentence": trial.get_text(),
                           "transcribed_sentence": transcribed_text.strip(), "text_input_technique": trial.get_text_input_technique(),
-                          "text_length": trial.get_text_length(), "total_time (ms)": time_needed,
+                          "total_time (ms)": time_needed,
                           "wpm": wpm, "timestamp (ISO)": self.timestamp()}
         if self.print_file:
-            self.out.writerow(current_values)
+            self.stats_out.writerow(current_values)
+        return
+
+    def log_event(self, type, key, text):
+        if key == QtCore.Qt.Key_Return:
+            text = "return"
+
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"" % (self.user_id, type, key, text, self.timestamp())
+        if self.print_log:
+            print(log_line)
+
+        current_values = {"user_id": self.user_id, "event_type": type, "event_key": key,
+                          "event_text": text, "timestamp (ISO)": self.timestamp()}
+        if self.print_file:
+            self.events_out.writerow(current_values)
         return
 
 
@@ -169,21 +192,15 @@ class Trial:
         Stores the settings for a single trial of the experiment
 
         @param text_input_technique: The text input technique. This can be chord input or standard QWERTZ input
-        @param text_length: The length of the text to transcribe (short or long)
     """
 
-    SHORT_SENTENCES = ["Wo rennst du hin.", "Ich sehe dich nicht.", "Es war ein Mann.", "Ich mag das Eis.",
-                       "Geh nun zum Auto.", "Der hat einen Hut.", "Es ist heiß hier.", "Das Spiel ist gut!",
-                       "Wir essen zu viel!", "Schieß ein Tor!"]
-    LONG_SENTENCES = ["Der Mann ging nie spazieren.", "Mein Hund hat dich lieb.", "Viele Leute mögen dich.",
-                      "Der Junge weiß nicht was er tut.", "Ich hab den Termin verpasst.", "Leider hab ich keine Zeit.",
-                      ]
+    SENTENCES = ["Der Mann ging nie spazieren.", "Mein Hund hat dich lieb.", "Viele Leute mögen dich.",
+                      "Der Junge weiß nicht was er tut.", "Ich hab den Termin verpasst.", "Leider hab ich keine Zeit."]
 
     INPUT_CHORD = "C"
     INPUT_STANDARD = "S"
 
-    def __init__(self, text_input_technique, text_length, text):
-        self.text_length = text_length
+    def __init__(self, text_input_technique, text):
         self.text_input_technique = text_input_technique
         self.text = text
 
@@ -192,32 +209,20 @@ class Trial:
         trials = []
         for i in range(len(conditions)):
             for j in range(repetitions):
-                trials.append(Trial(conditions[i][0], conditions[i][1], Trial.get_sentence_from_list(conditions[i][0], len(trials))))
+                trials.append(Trial(conditions[i], Trial.get_sentence_from_list(len(trials))))
         return trials
 
     @staticmethod
-    def get_sentence_from_list(type, idx):
-        if type == Trial.INPUT_STANDARD:
-            if idx < len(Trial.SHORT_SENTENCES):
-                return Trial.SHORT_SENTENCES[idx]
-            return Trial.SHORT_SENTENCES[randint(0, len(Trial.SHORT_SENTENCES) - 1)]
-        else:
-            if idx < len(Trial.LONG_SENTENCES):
-                return Trial.LONG_SENTENCES[idx]
-            return Trial.LONG_SENTENCES[randint(0, len(Trial.LONG_SENTENCES)- 1)]
-
-    ''' Helper for accessing this trial's settings'''
-    def get_current_condition(self):
-        return self.text_length, self.text_input_technique
+    def get_sentence_from_list(idx):
+        if idx < len(Trial.SENTENCES):
+            return Trial.SENTENCES[idx]
+        return Trial.SENTENCES[randint(0, len(Trial.SENTENCES) - 1)]
 
     def get_text(self):
         return self.text
 
     def get_text_input_technique(self):
         return self.text_input_technique
-
-    def get_text_length(self):
-        return self.text_length
 
 
 def main():
