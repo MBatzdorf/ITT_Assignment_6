@@ -6,19 +6,21 @@ import configparser
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 import re
 import csv
+import random
 from random import randint
 import text_input_technique as input_technique
 
 
 class TextTest(QtWidgets.QTextEdit):
-
-    def __init__(self, user_id, conditions, repetitions=1):
+    def __init__(self, user_id, conditions, repetitions=2):
         super(TextTest, self).__init__()
         self.elapsed = 0
         self.word_times = []
         self.trials = Trial.create_list_from_conditions(conditions, repetitions)
+        self.training_set = Trial.get_training_set(repetitions=3)
         self.current_trial = self.trials[0]
         self.current_text = ""
+        self.current_word = ""
         self.current_input_technique = None
         self.setInputTechnique(self.current_trial.get_text_input_technique())
         self.startNext = False
@@ -27,8 +29,11 @@ class TextTest(QtWidgets.QTextEdit):
         self.wordTimer = QtCore.QTime()
         self.logger = TestLogger(user_id, True, True)
         self.initUI()
+        self.startTraining()
         self.prepareNextTrial()
 
+    def startTraining(self):
+        pass
 
     def initUI(self):
         self.setGeometry(0, 0, 800, 200)
@@ -81,19 +86,25 @@ class TextTest(QtWidgets.QTextEdit):
         self.logger.log_event("key_pressed", ev.key(), ev.text())
         super(TextTest, self).keyPressEvent(ev)
         self.current_text += ev.text()
+        self.current_word += ev.text()
         if self.isFirstLetter:
             self.start_sentence_time_measurement()
             self.start_word_time_measurement()
             self.isFirstLetter = False
-            
+
         if ev.key() == QtCore.Qt.Key_Space:
             wordTime = self.stop_word_time_measurement()
+            self.logger.log_event("word_typed", ev.key(), self.current_word)
+            self.current_word = ""
             self.word_times.append(wordTime)
             self.start_word_time_measurement()
 
         if ev.key() == QtCore.Qt.Key_Return:
             wordTime = self.stop_word_time_measurement()
             self.sentenceTime = self.stop_sentence_time_measurement()
+            self.logger.log_event("word_typed", ev.key(), self.current_word)
+            self.logger.log_event("sentence_typed", ev.key(), self.current_text)
+            self.current_word = ""
             self.word_times.append(wordTime)
             self.logger.log_stats(self.current_trial, self.current_text, self.sentenceTime, self.calculate_wpm())
             self.prepareNextTrial()
@@ -101,8 +112,8 @@ class TextTest(QtWidgets.QTextEdit):
     def calculate_wpm(self):
         if self.sentenceTime == 0:
             return 0
-        #wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
-        wpm = float(len(self.word_times))*(60 / (self.sentenceTime/1000))
+        # wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
+        wpm = float(len(self.word_times)) * (60 / (self.sentenceTime / 1000))
         return wpm
 
     def keyReleaseEvent(self, ev):
@@ -134,32 +145,37 @@ class TestLogger(object):
         self.user_id = user_id
         self.stats_logfile = open("stats_user" + str(user_id) + ".csv", "a")
         self.stats_out = csv.DictWriter(self.stats_logfile,
-                                  ["user_id", "presented_sentence", "transcribed_sentence", "text_input_technique",
-                                   "total_time (ms)", "wpm", "timestamp (ISO)"], delimiter=";", quoting=csv.QUOTE_ALL)
+                                        ["user_id", "presented_sentence", "transcribed_sentence",
+                                         "text_input_technique",
+                                         "total_time (ms)", "wpm", "timestamp (ISO)"], delimiter=";",
+                                        quoting=csv.QUOTE_ALL)
         self.events_logfile = open("events_user" + str(user_id) + ".csv", "a")
         self.events_out = csv.DictWriter(self.events_logfile,
-                                        ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"], delimiter=";",
-                                        quoting=csv.QUOTE_ALL)
+                                         ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"],
+                                         delimiter=";",
+                                         quoting=csv.QUOTE_ALL)
         if self.print_file:
             self.stats_out.writeheader()
             self.events_out.writeheader()
         print("Fields for stats logging: "
-            "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
-            "\"total_time\";\"wpm\";\"timestamp (ISO)\"")
+              "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
+              "\"total_time\";\"wpm\";\"timestamp (ISO)\"")
         print("Fields for event logging: "
               "\"user_id\";\"event_type\";\"event_key\";\"event_text\";\"timestamp (ISO)\"")
 
     def log_stats(self, trial, transcribed_text, time_needed, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
-        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (self.user_id, trial.get_text(), trial.get_text_input_technique(),
-                                                                                transcribed_text.strip(), time_needed,
-                                                                                wpm, self.timestamp())
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%d\";\"%f\";\"%s\"" % (
+            self.user_id, trial.get_text(), trial.get_text_input_technique(),
+            transcribed_text.strip(), time_needed,
+            wpm, self.timestamp())
         if self.print_log:
             print(log_line)
 
         current_values = {"user_id": self.user_id, "presented_sentence": trial.get_text(),
-                          "transcribed_sentence": transcribed_text.strip(), "text_input_technique": trial.get_text_input_technique(),
+                          "transcribed_sentence": transcribed_text.strip(),
+                          "text_input_technique": trial.get_text_input_technique(),
                           "total_time (ms)": time_needed,
                           "wpm": wpm, "timestamp (ISO)": self.timestamp()}
         if self.print_file:
@@ -168,9 +184,12 @@ class TestLogger(object):
 
     def log_event(self, type, key, text):
         if key == QtCore.Qt.Key_Return:
-            text = "return"
+            key = "return"
 
-        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"" % (self.user_id, type, key, text, self.timestamp())
+        if key == QtCore.Qt.Key_Space:
+            key = "space"
+
+        log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"" % (self.user_id, type, key, text.strip(), self.timestamp())
         if self.print_log:
             print(log_line)
 
@@ -180,8 +199,8 @@ class TestLogger(object):
             self.events_out.writerow(current_values)
         return
 
-
     ''' Returns a timestamp'''
+
     @staticmethod
     def timestamp():
         return QtCore.QDateTime.currentDateTime().toString(QtCore.Qt.ISODate)
@@ -193,9 +212,16 @@ class Trial:
 
         @param text_input_technique: The text input technique. This can be chord input or standard QWERTZ input
     """
+    TRAINING_SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "der Junge weiß echt nicht was er tut",
+                          "ich hab den Termin verpasst", "das Spiel ist gut schieß nen Punkt",
+                          "wir essen zu viel Fleisch iss Gemüse"]
 
-    SENTENCES = ["Der Mann ging nie spazieren.", "Mein Hund hat dich lieb.", "Viele Leute mögen dich.",
-                      "Der Junge weiß nicht was er tut.", "Ich hab den Termin verpasst.", "Leider hab ich keine Zeit."]
+    SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "mein Hund hat dich extrem lieb",
+                 "Die Leute mögen dich ich mag dich auch",
+                 "der Junge weiß echt nicht was er tut", "ich hab den Termin verpasst", "leider hab ich keine Zeit",
+                 "wo rennst du nur rein", "es war ein Mann ich sehe ihn nicht.", "ich mag ein Eis es ist heiß hier",
+                 "geh nun zum Auto es ist kalt hier", "der hat nen Hut aber ich nicht",
+                 "das Spiel ist gut schieß nen Punkt", "wir essen zu viel Fleisch iss Gemüse"]
 
     INPUT_CHORD = "C"
     INPUT_STANDARD = "S"
@@ -205,10 +231,14 @@ class Trial:
         self.text = text
 
     @staticmethod
-    def create_list_from_conditions(conditions, repetitions=4):
+    def create_list_from_conditions(conditions, repetitions):
         trials = []
+        Trial.SENTENCES = repetitions * Trial.SENTENCES
+        # print(trials)
+
         for i in range(len(conditions)):
-            for j in range(repetitions):
+            random.shuffle(Trial.SENTENCES)
+            for j in range(len(Trial.SENTENCES)):
                 trials.append(Trial(conditions[i], Trial.get_sentence_from_list(len(trials))))
         return trials
 
@@ -216,13 +246,19 @@ class Trial:
     def get_sentence_from_list(idx):
         if idx < len(Trial.SENTENCES):
             return Trial.SENTENCES[idx]
-        return Trial.SENTENCES[randint(0, len(Trial.SENTENCES) - 1)]
+        else:
+            return Trial.SENTENCES[len(Trial.SENTENCES) - 1 - idx]
+            # return Trial.SENTENCES[randint(0, len(Trial.SENTENCES) - 1)]
 
     def get_text(self):
         return self.text
 
     def get_text_input_technique(self):
         return self.text_input_technique
+
+    @staticmethod
+    def get_training_set(repetitions):
+        return repetitions * Trial.TRAINING_SENTENCES
 
 
 def main():
@@ -234,8 +270,10 @@ def main():
     if sys.argv[1].endswith('.ini'):
         user_id, conditions = parse_ini_file(sys.argv[1])
     text_logger = TextTest(user_id, conditions)
-
     sys.exit(app.exec_())
+
+    # except Exception:
+    #    print("An error occured!")
 
 
 def parse_ini_file(filename):
