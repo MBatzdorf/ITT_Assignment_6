@@ -303,8 +303,6 @@ class Trial:
 
 
 def main():
-    # try:
-    global text_test
     app = QtWidgets.QApplication(sys.argv)
     if len(sys.argv) < 2:
         sys.stderr.write("Usage: %s <setup file>\n" % sys.argv[0])
