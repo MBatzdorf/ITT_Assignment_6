@@ -7,101 +7,75 @@ from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 import re
 import csv
 import random
-from random import randint
 import text_input_technique as input_technique
 
 
 class TextTest(QtWidgets.QTextEdit):
-    def __init__(self, user_id, conditions, repetitions=1):
+
+    def __init__(self, userId, conditions, repetitions=1):
         super(TextTest, self).__init__()
+        self.initVariables(userId, conditions, repetitions)
+        self.initUI()
+        self.prepareNextTrial()
+
+    def initVariables(self,userId, conditions, repetitions):
         self.elapsed = 0
-        self.training_elapsed = 0
-        self.word_times = []
+        self.wordTimes = []
         self.trials = Trial.create_list_from_conditions(conditions, repetitions)
-        self.training_set = Trial.get_training_set(repetitions=1)
-        self.current_trial = self.trials[0]
-        self.current_text = ""
-        self.current_word = ""
-        self.current_input_technique = None
-        self.setInputTechnique(self.current_trial.get_text_input_technique())
+        self.currentTrial = self.trials[0]
+        self.currentText = ""
+        self.currentWord = ""
+        self.currentInputTechnique = None
+        self.setInputTechnique(self.currentTrial.get_text_input_technique())
         self.startNext = False
-        self.isTraining = False
         self.isFirstLetter = True
         self.sentenceTimer = QtCore.QTime()
         self.wordTimer = QtCore.QTime()
-        self.logger = TestLogger(user_id, True, True)
-        self.initUI()
-        self.startTraining()
-        self.prepareNextTrial()
-
-    def startTraining(self):
-        self.isTraining = True
-
-    def showTrainingInstructions(self):
-        self.setText("Press Space to start the TRAINING Trial using CHORD INPUT!")
+        self.logger = TestLogger(userId, True, True)
 
     def initUI(self):
         self.setGeometry(0, 0, 800, 200)
         self.setWindowTitle('TextLogger')
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        self.showTrainingInstructions()
         self.show()
 
     def prepareNextTrial(self):
-        if not self.isTraining:
-            if self.elapsed < len(self.trials):
-                newTrial = self.trials[self.elapsed]
-                if newTrial.get_text_input_technique() != self.current_trial.get_text_input_technique() or \
-                        not self.startNext:
-                    self.startNext = False
-                    self.current_trial = newTrial
-                    self.showInstructions()
-                    self.setInputTechnique(self.current_trial.get_text_input_technique())
-                    return
-                self.current_trial = newTrial
-                self.isFirstLetter = True
-                self.current_text = ""
-                self.setText("\n" + self.current_trial.get_text())
-                self.elapsed += 1
-            else:
-                sys.stderr.write("All trials done!")
-                sys.exit(1)
-        elif self.isTraining:
-            if self.training_elapsed < len(self.training_set):
-                newTrial = self.training_set[self.training_elapsed]
-                if newTrial.get_text_input_technique() != self.current_trial.get_text_input_technique() or \
-                        not self.startNext:
-                    self.startNext = False
-                    self.current_trial = newTrial
-                    # self.showInstructions()
-                    self.setInputTechnique(self.current_trial.get_text_input_technique())
-                    return
-                self.current_trial = newTrial
-                self.isFirstLetter = True
-                self.current_text = ""
-                self.setText("\n" + self.current_trial.get_text())
-                self.training_elapsed += 1
-            else:
-                self.isTraining = False
+        if self.elapsed < len(self.trials):
+            newTrial = self.trials[self.elapsed]
+            if newTrial.get_text_input_technique() != self.currentTrial.get_text_input_technique() or \
+                    not self.startNext:
                 self.startNext = False
+                self.currentTrial = newTrial
                 self.showInstructions()
+                self.setInputTechnique(self.currentTrial.get_text_input_technique())
+                return
+            self.currentTrial = newTrial
+            self.isFirstLetter = True
+            self.currentText = ""
+            self.setText("\n" + self.currentTrial.get_text())
+            self.elapsed += 1
+        else:
+            self.endTest()
 
+    def endTest(self):
+        sys.stderr.write("All trials done!")
+        self.deleteLater()
 
     def showInstructions(self):
-        if self.current_trial.get_text_input_technique() == Trial.INPUT_CHORD:
+        if self.currentTrial.get_text_input_technique() == Trial.INPUT_CHORD:
             self.setText("Press Space to start the next trial with CHORD input technique")
         else:
             self.setText("Press Space to start the next trial with STANDARD input technique")
         return
 
     def setInputTechnique(self, identifier):
-        self.removeEventFilter(self.current_input_technique)
+        self.removeEventFilter(self.currentInputTechnique)
         if identifier == Trial.INPUT_CHORD:
-            self.current_input_technique = input_technique.ChordInputMethod()
-            self.installEventFilter(self.current_input_technique)
+            self.currentInputTechnique = input_technique.ChordInputMethod()
+            self.installEventFilter(self.currentInputTechnique)
         else:
-            self.current_input_technique = input_technique.StandardInputMethod()
-            self.installEventFilter(self.current_input_technique)
+            self.currentInputTechnique = input_technique.StandardInputMethod()
+            self.installEventFilter(self.currentInputTechnique)
         return
 
     def keyPressEvent(self, ev):
@@ -110,69 +84,94 @@ class TextTest(QtWidgets.QTextEdit):
                 self.startNext = True
                 self.prepareNextTrial()
             return
-        if not self.isTraining:
-            self.logger.log_event("key_pressed", ev.key(), ev.text())
+        self.logger.log_event("key_pressed", ev.key(), ev.text())
         super(TextTest, self).keyPressEvent(ev)
-        self.current_text += ev.text()
-        self.current_word += ev.text()
+        self.currentText += ev.text()
+        self.currentWord += ev.text()
         if self.isFirstLetter:
-            self.start_sentence_time_measurement()
-            self.start_word_time_measurement()
+            self.startSentenceTimeMeasurement()
+            self.startWordTimeMeasurement()
             self.isFirstLetter = False
 
         if ev.key() == QtCore.Qt.Key_Space:
-            if not self.isTraining:
-                wordTime = self.stop_word_time_measurement()
-                self.logger.log_event("word_typed", ev.key(), self.current_word)
-                self.current_word = ""
-                self.word_times.append(wordTime)
-                self.start_word_time_measurement()
+            wordTime = self.stopWordTimeMeasurement()
+            self.logger.log_event("word_typed", ev.key(), self.currentWord)
+            self.currentWord = ""
+            self.wordTimes.append(wordTime)
+            self.startWordTimeMeasurement()
 
         if ev.key() == QtCore.Qt.Key_Return:
-            if not self.isTraining:
-                wordTime = self.stop_word_time_measurement()
-                self.sentenceTime = self.stop_sentence_time_measurement()
-                self.logger.log_event("word_typed", ev.key(), self.current_word)
-                self.logger.log_event("sentence_typed", ev.key(), self.current_text)
-                self.current_word = ""
-                self.word_times.append(wordTime)
-                self.logger.log_stats(self.current_trial, self.current_text, self.sentenceTime, self.calculate_wpm())
+            wordTime = self.stopWordTimeMeasurement()
+            self.sentenceTime = self.stopSentenceTimeMeasurement()
+            self.logger.log_event("word_typed", ev.key(), self.currentWord)
+            self.logger.log_event("sentence_typed", ev.key(), self.currentText)
+            self.currentWord = ""
+            self.wordTimes.append(wordTime)
+            self.logger.log_stats(self.currentTrial, self.currentText, self.sentenceTime, self.calculateWpm())
             self.prepareNextTrial()
 
-    def calculate_wpm(self):
+    def calculateWpm(self):
         if self.sentenceTime == 0:
             return 0
-        # wpm = (float(len(self.current_text)) / float(self.sentenceTime / 1000)) * (60 / 5)
-        wpm = float(len(self.word_times)) * (60 / (self.sentenceTime / 1000))
+        # wpm = (float(len(self.currentText)) / float(self.sentenceTime / 1000)) * (60 / 5)
+        wpm = float(len(self.wordTimes)) * (60 / (self.sentenceTime / 1000))
         return wpm
 
     def keyReleaseEvent(self, ev):
         if not self.startNext:
             return
-        if not self.isTraining:
-            self.logger.log_event("key_released", ev.key(), ev.text())
+        self.logger.log_event("key_released", ev.key(), ev.text())
         super(TextTest, self).keyReleaseEvent(ev)
 
-    def start_sentence_time_measurement(self):
+    def startSentenceTimeMeasurement(self):
         self.sentenceTimer.start()
 
-    def stop_sentence_time_measurement(self):
+    def stopSentenceTimeMeasurement(self):
         time_needed = self.sentenceTimer.elapsed()
         return time_needed
 
-    def start_word_time_measurement(self):
+    def startWordTimeMeasurement(self):
         self.wordTimer.start()
 
-    def stop_word_time_measurement(self):
+    def stopWordTimeMeasurement(self):
         time_needed = self.wordTimer.elapsed()
         return time_needed
 
 
+class TextTraining(TextTest):
+    def __init__(self, userId, trainingInputTechnique, testToStartAfter=None, repetitions=1):
+        super(TextTraining, self).__init__(userId, trainingInputTechnique, repetitions)
+        self.logger.disable_stdout_logging()
+        self.logger.disable_file_logging()
+        self.testToStart = testToStartAfter
+        if self.testToStart is not None:
+            self.testToStart.hide()
+
+    def initVariables(self,userId, trainingInputTechnique, repetitions):
+        super().initVariables(userId, trainingInputTechnique, repetitions)
+        self.trials = Trial.get_training_set(trainingInputTechnique, repetitions)
+        self.currentTrial = self.trials[0]
+        self.setInputTechnique(self.currentTrial.get_text_input_technique())
+
+    def showInstructions(self):
+        if self.currentTrial.get_text_input_technique() == Trial.INPUT_CHORD:
+            self.setText("Press Space to start the TRAINING Trial using CHORD INPUT!")
+        else:
+            self.setText("Press Space to start the TRAINING Trial using STANDARD INPUT!")
+        return
+
+    def endTest(self):
+        sys.stderr.write("All trials done!")
+        if self.testToStart is not None:
+            self.testToStart.show()
+        self.deleteLater()
+
+
 class TestLogger(object):
-    def __init__(self, user_id, print_to_log, print_to_file):
+    def __init__(self, user_id, log_to_stdout, log_to_file):
         super(TestLogger, self).__init__()
-        self.print_log = print_to_log
-        self.print_file = print_to_file
+        self.log_to_stdout = log_to_stdout
+        self.log_to_file = log_to_file
         self.user_id = user_id
         self.stats_logfile = open("stats_user" + str(user_id) + ".csv", "a")
         self.stats_out = csv.DictWriter(self.stats_logfile,
@@ -185,7 +184,7 @@ class TestLogger(object):
                                          ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"],
                                          delimiter=";",
                                          quoting=csv.QUOTE_ALL)
-        if self.print_file:
+        if self.log_to_file:
             self.stats_out.writeheader()
             self.events_out.writeheader()
         print("Fields for stats logging: "
@@ -201,7 +200,7 @@ class TestLogger(object):
             self.user_id, trial.get_text(), trial.get_text_input_technique(),
             transcribed_text.strip(), time_needed,
             wpm, self.timestamp())
-        if self.print_log:
+        if self.log_to_stdout:
             print(log_line)
 
         current_values = {"user_id": self.user_id, "presented_sentence": trial.get_text(),
@@ -209,7 +208,7 @@ class TestLogger(object):
                           "text_input_technique": trial.get_text_input_technique(),
                           "total_time (ms)": time_needed,
                           "wpm": wpm, "timestamp (ISO)": self.timestamp()}
-        if self.print_file:
+        if self.log_to_file:
             self.stats_out.writerow(current_values)
         return
 
@@ -221,12 +220,12 @@ class TestLogger(object):
             key = "space"
 
         log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"" % (self.user_id, type, key, text.strip(), self.timestamp())
-        if self.print_log:
+        if self.log_to_stdout:
             print(log_line)
 
         current_values = {"user_id": self.user_id, "event_type": type, "event_key": key,
                           "event_text": text, "timestamp (ISO)": self.timestamp()}
-        if self.print_file:
+        if self.log_to_file:
             self.events_out.writerow(current_values)
         return
 
@@ -236,6 +235,14 @@ class TestLogger(object):
     def timestamp():
         return QtCore.QDateTime.currentDateTime().toString(QtCore.Qt.ISODate)
 
+    def disable_stdout_logging(self):
+        self.log_to_stdout = False
+        return
+
+    def disable_file_logging(self):
+        self.log_to_file = False
+        return
+
 
 class Trial:
     """
@@ -243,10 +250,11 @@ class Trial:
 
         @param text_input_technique: The text input technique. This can be chord input or standard QWERTZ input
     """
+
     TRAINING_SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "der Junge weiß echt nicht was er tut",
                           "ich hab den Termin verpasst", "das Spiel ist gut schieß nen Punkt",
                           "wir essen zu viel Fleisch iss Gemüse"]
-
+    
     SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "mein Hund hat dich extrem lieb",
                  "Die Leute mögen dich ich mag dich auch",
                  "der Junge weiß echt nicht was er tut", "ich hab den Termin verpasst", "leider hab ich keine Zeit",
@@ -265,7 +273,6 @@ class Trial:
     def create_list_from_conditions(conditions, repetitions):
         trials = []
         Trial.SENTENCES = repetitions * Trial.SENTENCES
-        # print(trials)
 
         for i in range(len(conditions)):
             random.shuffle(Trial.SENTENCES)
@@ -279,7 +286,6 @@ class Trial:
             return Trial.SENTENCES[idx]
         else:
             return Trial.SENTENCES[len(Trial.SENTENCES) - 1 - idx]
-            # return Trial.SENTENCES[randint(0, len(Trial.SENTENCES) - 1)]
 
     def get_text(self):
         return self.text
@@ -288,27 +294,25 @@ class Trial:
         return self.text_input_technique
 
     @staticmethod
-    def get_training_set(repetitions):
+    def get_training_set(input_technique, repetitions):
         training_trials = []
         Trial.TRAINING_SENTENCES = repetitions * Trial.TRAINING_SENTENCES
         for i in range(len(Trial.TRAINING_SENTENCES)):
-            training_trials.append(Trial("C", Trial.TRAINING_SENTENCES[i]))
+            training_trials.append(Trial(input_technique, Trial.TRAINING_SENTENCES[i]))
         return training_trials
 
 
 def main():
     # try:
+    global text_test
     app = QtWidgets.QApplication(sys.argv)
     if len(sys.argv) < 2:
         sys.stderr.write("Usage: %s <setup file>\n" % sys.argv[0])
         sys.exit(1)
     if sys.argv[1].endswith('.ini'):
         user_id, conditions = parse_ini_file(sys.argv[1])
-    text_logger = TextTest(user_id, conditions)
+    text_training = TextTraining(user_id, "C", TextTest(user_id, conditions))
     sys.exit(app.exec_())
-
-    # except Exception:
-    #    print("An error occured!")
 
 
 def parse_ini_file(filename):
