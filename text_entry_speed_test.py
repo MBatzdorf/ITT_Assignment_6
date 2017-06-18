@@ -57,6 +57,7 @@ class TextTest(QtWidgets.QTextEdit):
             self.endTest()
 
     def endTest(self):
+        self.logger.log_event("test_finished", "return", "Test finished! All trials done!")
         sys.stderr.write("All trials done!")
         self.deleteLater()
 
@@ -139,7 +140,7 @@ class TextTest(QtWidgets.QTextEdit):
 
 
 class TextTraining(TextTest):
-    def __init__(self, userId, trainingInputTechnique, testToStartAfter=None, repetitions=1):
+    def __init__(self, userId, trainingInputTechnique, testToStartAfter=None, repetitions=3):
         super(TextTraining, self).__init__(userId, trainingInputTechnique, True, repetitions)
         self.logger.disable_stdout_logging()
         self.logger.disable_file_logging()
@@ -258,12 +259,12 @@ class Trial:
     """
 
     TRAINING_SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "der Junge weiß echt nicht was er tut",
-                          "ich hab den Termin verpasst", "das Spiel ist gut schieß nen Punkt",
+                          "ich hab den Bus verpasst", "das Spiel ist gut schieß nen Punkt",
                           "wir essen zu viel Fleisch iss Gemüse"]
 
     SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "mein Hund hat dich extrem lieb",
                  "Die Leute mögen dich ich mag dich auch",
-                 "der Junge weiß echt nicht was er tut", "ich hab den Termin verpasst", "leider hab ich keine Zeit",
+                 "der Junge weiß echt nicht was er tut", "ich hab den Bus verpasst", "leider hab ich keine Zeit",
                  "wo rennst du bloß rein", "es war ein Mann ich sehe ihn nicht.", "ich mag ein Eis es ist heiß hier",
                  "geh nun zum Auto es ist kalt hier", "der hat nen Hut aber ich nicht",
                  "das Spiel ist gut schieß nen Punkt", "wir essen zu viel Fleisch iss Gemüse"]

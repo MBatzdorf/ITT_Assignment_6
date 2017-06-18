@@ -95,7 +95,7 @@ class ChordInputMethod(StandardInputMethod):
         frozenset(["v", "i", "e", "l"]): "viel",
         frozenset(["s", "c", "h", "i", "e", "ß"]): "schieß",
         frozenset(["n", "u", "p", "k", "t"]): "Punkt",
-        frozenset(["t", "e", "r", "m", "i", "n"]): "Termin",
+        frozenset(["b", "u", "s"]): "Bus",
         frozenset(["v", "e", "r", "p", "a", "s", "t"]): "verpasst",
         frozenset(["l", "e", "i", "d", "r"]): "leider",
         frozenset(["h", "a", "b"]): "hab",
