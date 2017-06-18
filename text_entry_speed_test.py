@@ -11,14 +11,13 @@ import text_input_technique as input_technique
 
 
 class TextTest(QtWidgets.QTextEdit):
-
-    def __init__(self, userId, conditions, repetitions=1):
+    def __init__(self, userId, conditions, isTraining, repetitions=2):
         super(TextTest, self).__init__()
-        self.initVariables(userId, conditions, repetitions)
+        self.initVariables(userId, conditions, isTraining, repetitions)
         self.initUI()
         self.prepareNextTrial()
 
-    def initVariables(self,userId, conditions, repetitions):
+    def initVariables(self, userId, conditions, isTraining, repetitions):
         self.elapsed = 0
         self.wordTimes = []
         self.trials = Trial.create_list_from_conditions(conditions, repetitions)
@@ -31,7 +30,7 @@ class TextTest(QtWidgets.QTextEdit):
         self.isFirstLetter = True
         self.sentenceTimer = QtCore.QTime()
         self.wordTimer = QtCore.QTime()
-        self.logger = TestLogger(userId, True, True)
+        self.logger = TestLogger(userId, True, True, isTraining)
 
     def initUI(self):
         self.setGeometry(0, 0, 800, 200)
@@ -113,8 +112,9 @@ class TextTest(QtWidgets.QTextEdit):
     def calculateWpm(self):
         if self.sentenceTime == 0:
             return 0
-        # wpm = (float(len(self.currentText)) / float(self.sentenceTime / 1000)) * (60 / 5)
-        wpm = float(len(self.wordTimes)) * (60 / (self.sentenceTime / 1000))
+        # followed formula from http://www.yorku.ca/mack/RN-TextEntrySpeed.html
+        wpm = (float(len(self.currentText)) / float(self.sentenceTime / 1000)) * (60 / 5)
+        # wpm = float(len(self.wordTimes)) * (60 / (self.sentenceTime / 1000))
         return wpm
 
     def keyReleaseEvent(self, ev):
@@ -140,15 +140,15 @@ class TextTest(QtWidgets.QTextEdit):
 
 class TextTraining(TextTest):
     def __init__(self, userId, trainingInputTechnique, testToStartAfter=None, repetitions=1):
-        super(TextTraining, self).__init__(userId, trainingInputTechnique, repetitions)
+        super(TextTraining, self).__init__(userId, trainingInputTechnique, True, repetitions)
         self.logger.disable_stdout_logging()
         self.logger.disable_file_logging()
         self.testToStart = testToStartAfter
         if self.testToStart is not None:
             self.testToStart.hide()
 
-    def initVariables(self,userId, trainingInputTechnique, repetitions):
-        super().initVariables(userId, trainingInputTechnique, repetitions)
+    def initVariables(self, userId, trainingInputTechnique, isTraining, repetitions):
+        super().initVariables(userId, trainingInputTechnique, isTraining, repetitions)
         self.trials = Trial.get_training_set(trainingInputTechnique, repetitions)
         self.currentTrial = self.trials[0]
         self.setInputTechnique(self.currentTrial.get_text_input_technique())
@@ -168,30 +168,34 @@ class TextTraining(TextTest):
 
 
 class TestLogger(object):
-    def __init__(self, user_id, log_to_stdout, log_to_file):
+    def __init__(self, user_id, log_to_stdout, log_to_file, isTraining):
         super(TestLogger, self).__init__()
         self.log_to_stdout = log_to_stdout
         self.log_to_file = log_to_file
+        self.isTraining = isTraining
         self.user_id = user_id
-        self.stats_logfile = open("stats_user" + str(user_id) + ".csv", "a")
+        self.init_logging()
+
+    def init_logging(self):
+        self.stats_logfile = open("stats_user" + str(self.user_id) + ".csv", "a")
         self.stats_out = csv.DictWriter(self.stats_logfile,
                                         ["user_id", "presented_sentence", "transcribed_sentence",
                                          "text_input_technique",
                                          "total_time (ms)", "wpm", "timestamp (ISO)"], delimiter=";",
                                         quoting=csv.QUOTE_ALL)
-        self.events_logfile = open("events_user" + str(user_id) + ".csv", "a")
+        self.events_logfile = open("events_user" + str(self.user_id) + ".csv", "a")
         self.events_out = csv.DictWriter(self.events_logfile,
                                          ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"],
                                          delimiter=";",
                                          quoting=csv.QUOTE_ALL)
-        if self.log_to_file:
+        if not self.isTraining:
             self.stats_out.writeheader()
             self.events_out.writeheader()
-        print("Fields for stats logging: "
-              "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
-              "\"total_time\";\"wpm\";\"timestamp (ISO)\"")
-        print("Fields for event logging: "
-              "\"user_id\";\"event_type\";\"event_key\";\"event_text\";\"timestamp (ISO)\"")
+            print("Fields for stats logging: "
+                  "\"user_id\";\"presented_sentence\";\"transcribed_sentence\";\"text_input_technique\";"
+                  "\"total_time\";\"wpm\";\"timestamp (ISO)\"")
+            print("Fields for event logging: "
+                  "\"user_id\";\"event_type\";\"event_key\";\"event_text\";\"timestamp (ISO)\"")
 
     def log_stats(self, trial, transcribed_text, time_needed, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
@@ -215,9 +219,11 @@ class TestLogger(object):
     def log_event(self, type, key, text):
         if key == QtCore.Qt.Key_Return:
             key = "return"
+            text = "\\n"
 
         if key == QtCore.Qt.Key_Space:
             key = "space"
+            text = " "
 
         log_line = "\"%s\";\"%s\";\"%s\";\"%s\";\"%s\"" % (self.user_id, type, key, text.strip(), self.timestamp())
         if self.log_to_stdout:
@@ -254,11 +260,11 @@ class Trial:
     TRAINING_SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "der Junge weiß echt nicht was er tut",
                           "ich hab den Termin verpasst", "das Spiel ist gut schieß nen Punkt",
                           "wir essen zu viel Fleisch iss Gemüse"]
-    
+
     SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "mein Hund hat dich extrem lieb",
                  "Die Leute mögen dich ich mag dich auch",
                  "der Junge weiß echt nicht was er tut", "ich hab den Termin verpasst", "leider hab ich keine Zeit",
-                 "wo rennst du nur rein", "es war ein Mann ich sehe ihn nicht.", "ich mag ein Eis es ist heiß hier",
+                 "wo rennst du bloß rein", "es war ein Mann ich sehe ihn nicht.", "ich mag ein Eis es ist heiß hier",
                  "geh nun zum Auto es ist kalt hier", "der hat nen Hut aber ich nicht",
                  "das Spiel ist gut schieß nen Punkt", "wir essen zu viel Fleisch iss Gemüse"]
 
@@ -309,7 +315,7 @@ def main():
         sys.exit(1)
     if sys.argv[1].endswith('.ini'):
         user_id, conditions = parse_ini_file(sys.argv[1])
-    text_training = TextTraining(user_id, "C", TextTest(user_id, conditions))
+    text_training = TextTraining(user_id, "C", TextTest(user_id, conditions, False))
     sys.exit(app.exec_())
 
 

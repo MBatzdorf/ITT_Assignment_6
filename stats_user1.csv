@@ -1,0 +1,4 @@
+"user_id";"presented_sentence";"transcribed_sentence";"text_input_technique";"total_time (ms)";"wpm";"timestamp (ISO)"
+"1";"der Mann ging im Herbst mal allein spazieren";"sdf sdf fsd";"C";"2440";"59.016393442622956";"2017-06-18T14:03:01"
+"1";"wo rennst du nur rein";"wo rennst du rein";"C";"9502";"22.732056409177012";"2017-06-18T14:03:12"
+"1";"leider hab ich keine Zeit";"";"C";"0";"0";"2017-06-18T14:03:19"

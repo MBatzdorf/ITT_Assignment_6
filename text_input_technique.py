@@ -114,10 +114,10 @@ class ChordInputMethod(StandardInputMethod):
         frozenset(["e", "m", "n"]): "Termin",
         frozenset(["i", "m"]): "im",
         frozenset(["f", "l", "e", "i", "s", "c", "h"]): "Fleisch",
-        frozenset(["n", "u", "r"]): "nur",
         frozenset(["n", "e"]): "nen",
         frozenset(["d", "i", "e"]): "die",
         frozenset(["h", "u", "t"]): "Hut",
+        frozenset(["b", "l", "o", "ß"]): "bloß",
     }
 
     def __init__(self):
