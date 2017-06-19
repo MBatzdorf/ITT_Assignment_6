@@ -3,11 +3,19 @@
 
 import sys
 import configparser
-from PyQt5 import Qt, QtGui, QtCore, QtWidgets
+
+try:
+    from PyQt5 import Qt, QtGui, QtCore, QtWidgets
+except ImportError:
+    print("Could not import PyQt!")
 import re
 import csv
 import random
-import text_input_technique as input_technique
+
+try:
+    import text_input_technique as input_technique
+except ImportError:
+    print("Could not import text_input_technique.py!")
 
 # This script was created by Alexander Frummet and Marco Batzdorf
 # and is based on the "textedit.py" script
@@ -159,7 +167,6 @@ class TextTest(QtWidgets.QTextEdit):
             return 0
         # followed formula from http://www.yorku.ca/mack/RN-TextEntrySpeed.html
         wpm = (float(len(self.currentText)) / float(self.sentenceTime / 1000)) * (60 / 5)
-        # wpm = float(len(self.wordTimes)) * (60 / (self.sentenceTime / 1000))
         return wpm
 
     ''' Handles key release events received from the input filter '''
@@ -175,8 +182,7 @@ class TextTest(QtWidgets.QTextEdit):
     def startSentenceTimeMeasurement(self):
         self.sentenceTimer.start()
 
-    ''' Stops the time measurement for writing a whole sentence 
-
+    ''' Stops the time measurement for writing a whole sentence
         @return: The time needed to write the whole sentence presented to the user
     '''
 
@@ -189,8 +195,7 @@ class TextTest(QtWidgets.QTextEdit):
     def startWordTimeMeasurement(self):
         self.wordTimer.start()
 
-    ''' Stops the time measurement for writing a single word 
-
+    ''' Stops the time measurement for writing a single word
         @return: The time needed to write the last word typed
     '''
 
@@ -251,7 +256,8 @@ class TestLogger(object):
     """
         Responsible for logging user input events and user typing statistics to stdout and/or to a csv file
 
-        @param user_id: The id used to name the resulting csv-files; Used as a logging parameter for later user identification
+        @param user_id: The id used to name the resulting csv-files; Used as a logging parameter for later user
+        identification
         @param log_to_stdout: Set to True if you want to output the logs to stdout
         @param log_to_file: Set to True if all lines should be written to a csv-file
     """
@@ -434,14 +440,17 @@ class Trial:
 
 
 def main():
-    app = QtWidgets.QApplication(sys.argv)
-    if len(sys.argv) < 2:
-        sys.stderr.write("Usage: %s <setup file>\n" % sys.argv[0])
-        sys.exit(1)
-    if sys.argv[1].endswith('.ini'):
-        user_id, conditions = parse_ini_file(sys.argv[1])
-    text_training = TextTraining(user_id, "C", TextTest(user_id, conditions))
-    sys.exit(app.exec_())
+    try:
+        app = QtWidgets.QApplication(sys.argv)
+        if len(sys.argv) < 2:
+            sys.stderr.write("Usage: %s <setup file>\n" % sys.argv[0])
+            sys.exit(1)
+        if sys.argv[1].endswith('.ini'):
+            user_id, conditions = parse_ini_file(sys.argv[1])
+        text_training = TextTraining(user_id, "C", TextTest(user_id, conditions))
+        sys.exit(app.exec_())
+    except Exception:
+        print("An error occured!")
 
 
 def parse_ini_file(filename):
@@ -458,7 +467,6 @@ def parse_ini_file(filename):
         setup = config['experiment_setup']
         user_id = setup['UserID']
         conditions_string = setup['Conditions']
-        # inspired by: https://stackoverflow.com/questions/9763116/parse-a-tuple-from-a-string
         conditions = conditions_string.split(";")
     else:
         print("Error: wrong file format.")

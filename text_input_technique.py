@@ -7,7 +7,6 @@ import re
 
 
 class StandardInputMethod(QtCore.QObject):
-
     """
         Input filter for qt textedit fields representing the input technique
         Base class for all input techniques
@@ -21,16 +20,16 @@ class StandardInputMethod(QtCore.QObject):
         self.keys = []
 
     ''' Helper for getting the currently typed word'''
+
     def get_word(self):
         return "".join(self.keys)
 
     ''' Actual filtering method for input events
-    
         Only passes the input event if valid letters were entered or a valid keyboard command was given
-    
         @param watched_textedit: the Qt text edit field the user typed into
         @param ev: The input event
     '''
+
     def eventFilter(self, watched_textedit, ev):
         if not ev.spontaneous():
             return False  # ignore events that we injected ourselves
@@ -60,7 +59,6 @@ class StandardInputMethod(QtCore.QObject):
 
 
 class ChordInputMethod(StandardInputMethod):
-
     """
         Advanced Input filter for qt textedit fields
         Combinations of keyboard buttons are mapped to whole words
@@ -148,7 +146,11 @@ class ChordInputMethod(StandardInputMethod):
         self.keys = []
         self.chords = ChordInputMethod.CHORDS
 
-    ''' Returns the currently typed word or a whole word at once if a corresponding mapping is found in the chord set above'''
+    '''
+    Returns the currently typed word or a whole word at once if a corresponding mapping
+    is found in the chord set above
+    '''
+
     def get_word(self):
         try:
             return self.chords[frozenset(self.keys)] + ""
