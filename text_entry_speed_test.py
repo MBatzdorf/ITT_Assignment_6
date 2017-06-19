@@ -10,13 +10,40 @@ import random
 import text_input_technique as input_technique
 
 
+# This script was created by Alexander Frummet and Marco Batzdorf
+# and is based on the "textedit.py" script
+
+""" setup ini file format (S = Standard Input; C = Chord Input):
+[experiment_setup]
+UserID = 1
+Conditions = S;C
+"""
+
+
 class TextTest(QtWidgets.QTextEdit):
+
+    """
+        Controller class for performing a test on text input speed
+
+        @param userId: The user's id; used for logging
+        @param conditions: A list with conditions for the tests that are to run
+        @param isTraining:
+        @param repetitions: Defines how often the test is repeated for a single condition
+    """
+
     def __init__(self, userId, conditions, isTraining, repetitions=2):
         super(TextTest, self).__init__()
         self.initVariables(userId, conditions, isTraining, repetitions)
         self.initUI()
         self.prepareNextTrial()
 
+    ''' Sets up all variables needed to perform a test
+    
+        @param userId: The user's id; used for logging
+        @param conditions: A list with conditions for the tests that are to run
+        @param isTraining:
+        @param repetitions: Defines how often the test is repeated for a single condition
+    '''
     def initVariables(self, userId, conditions, isTraining, repetitions):
         self.elapsed = 0
         self.wordTimes = []
@@ -32,12 +59,15 @@ class TextTest(QtWidgets.QTextEdit):
         self.wordTimer = QtCore.QTime()
         self.logger = TestLogger(userId, True, True, isTraining)
 
+    ''' Set up the UI settings and show it to the user'''
     def initUI(self):
         self.setGeometry(0, 0, 800, 200)
         self.setWindowTitle('TextLogger')
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.show()
 
+    ''' Chooses the next trial to complete, resets variables necessary to do so
+        Exits the application if all trials are completed '''
     def prepareNextTrial(self):
         if self.elapsed < len(self.trials):
             newTrial = self.trials[self.elapsed]
@@ -56,11 +86,13 @@ class TextTest(QtWidgets.QTextEdit):
         else:
             self.endTest()
 
+    ''' Tells qt to delete this widget from the viewport '''
     def endTest(self):
         self.logger.log_event("test_finished", "return", "Test finished! All trials done!")
         sys.stderr.write("All trials done!")
         self.deleteLater()
 
+    ''' Shows the instructions for corresponding condition '''
     def showInstructions(self):
         if self.currentTrial.get_text_input_technique() == Trial.INPUT_CHORD:
             self.setText("Press Space to start the next trial with CHORD input technique")
@@ -68,6 +100,10 @@ class TextTest(QtWidgets.QTextEdit):
             self.setText("Press Space to start the next trial with STANDARD input technique")
         return
 
+    ''' Sets a new input technique (as input filter) and removes the old one
+        
+        @param identifier: Input technique to install
+    '''
     def setInputTechnique(self, identifier):
         self.removeEventFilter(self.currentInputTechnique)
         if identifier == Trial.INPUT_CHORD:
@@ -78,6 +114,7 @@ class TextTest(QtWidgets.QTextEdit):
             self.installEventFilter(self.currentInputTechnique)
         return
 
+    ''' Handles key press events received from the input filter '''
     def keyPressEvent(self, ev):
         if not self.startNext:
             if ev.key() == QtCore.Qt.Key_Space:
@@ -110,6 +147,7 @@ class TextTest(QtWidgets.QTextEdit):
             self.logger.log_stats(self.currentTrial, self.currentText, self.sentenceTime, self.calculateWpm())
             self.prepareNextTrial()
 
+    ''' Calculates the amount of words per minute on the basis of the written sentence'''
     def calculateWpm(self):
         if self.sentenceTime == 0:
             return 0
@@ -118,28 +156,48 @@ class TextTest(QtWidgets.QTextEdit):
         # wpm = float(len(self.wordTimes)) * (60 / (self.sentenceTime / 1000))
         return wpm
 
+    ''' Handles key release events received from the input filter '''
     def keyReleaseEvent(self, ev):
         if not self.startNext:
             return
         self.logger.log_event("key_released", ev.key(), ev.text())
         super(TextTest, self).keyReleaseEvent(ev)
 
+    ''' Starts the time measurement for writing a whole sentence '''
     def startSentenceTimeMeasurement(self):
         self.sentenceTimer.start()
 
+    ''' Stops the time measurement for writing a whole sentence 
+    
+        @return: The time needed to write the whole sentence presented to the user
+    '''
     def stopSentenceTimeMeasurement(self):
         time_needed = self.sentenceTimer.elapsed()
         return time_needed
 
+    ''' Starts the time measurement for writing a single word  '''
     def startWordTimeMeasurement(self):
         self.wordTimer.start()
 
+    ''' Stops the time measurement for writing a single word 
+
+        @return: The time needed to write the last word typed
+    '''
     def stopWordTimeMeasurement(self):
         time_needed = self.wordTimer.elapsed()
         return time_needed
 
 
 class TextTraining(TextTest):
+    """
+        Controller class for performing a test on text input speed
+
+        @param userId: The user's id
+        @param trainingInputTechnique: Defines which input technique should be used for training
+        @param testToStartAfter: Tells the training which actual test to start afterwards
+        @param repetitions: Defines how often the training is repeated for a single condition
+    """
+
     def __init__(self, userId, trainingInputTechnique, testToStartAfter=None, repetitions=3):
         super(TextTraining, self).__init__(userId, trainingInputTechnique, True, repetitions)
         self.logger.disable_stdout_logging()
@@ -148,12 +206,20 @@ class TextTraining(TextTest):
         if self.testToStart is not None:
             self.testToStart.hide()
 
+    ''' Sets up all variables needed to perform a test
+
+        @param userId: The user's id
+        @param trainingInputTechnique: Defines which input technique should be used for training
+        @param testToStartAfter: Tells the training which actual test to start afterwards
+        @param repetitions: Defines how often the training is repeated for a single condition
+    '''
     def initVariables(self, userId, trainingInputTechnique, isTraining, repetitions):
         super().initVariables(userId, trainingInputTechnique, isTraining, repetitions)
         self.trials = Trial.get_training_set(trainingInputTechnique, repetitions)
         self.currentTrial = self.trials[0]
         self.setInputTechnique(self.currentTrial.get_text_input_technique())
 
+    ''' Shows the instructions for the current training session '''
     def showInstructions(self):
         if self.currentTrial.get_text_input_technique() == Trial.INPUT_CHORD:
             self.setText("Press Space to start the TRAINING Trial using CHORD INPUT!")
@@ -161,6 +227,7 @@ class TextTraining(TextTest):
             self.setText("Press Space to start the TRAINING Trial using STANDARD INPUT!")
         return
 
+    ''' Called when the training session finished; Starts the actual test if available '''
     def endTest(self):
         sys.stderr.write("All trials done!")
         if self.testToStart is not None:
@@ -169,14 +236,24 @@ class TextTraining(TextTest):
 
 
 class TestLogger(object):
-    def __init__(self, user_id, log_to_stdout, log_to_file, isTraining):
+
+    """
+        Responsible for logging user input events and user typing statistics to stdout and/or to a csv file
+
+        @param user_id: The id used to name the resulting csv-files; Used as a logging parameter for later user identification
+        @param log_to_stdout: Set to True if you want to output the logs to stdout
+        @param log_to_file: Set to True if all lines should be written to a csv-file
+        @param is_training: If set to True logging is disabled during training session
+    """
+    def __init__(self, user_id, log_to_stdout, log_to_file, is_training):
         super(TestLogger, self).__init__()
         self.log_to_stdout = log_to_stdout
         self.log_to_file = log_to_file
-        self.isTraining = isTraining
+        self.is_training = is_training
         self.user_id = user_id
         self.init_logging()
 
+    ''' Creates necessary files for logging and writes appropriate header information '''
     def init_logging(self):
         self.stats_logfile = open("stats_user" + str(self.user_id) + ".csv", "a")
         self.stats_out = csv.DictWriter(self.stats_logfile,
@@ -189,7 +266,7 @@ class TestLogger(object):
                                          ["user_id", "event_type", "event_key", "event_text", "timestamp (ISO)"],
                                          delimiter=";",
                                          quoting=csv.QUOTE_ALL)
-        if not self.isTraining:
+        if not self.is_training:
             self.stats_out.writeheader()
             self.events_out.writeheader()
             print("Fields for stats logging: "
@@ -198,6 +275,13 @@ class TestLogger(object):
             print("Fields for event logging: "
                   "\"user_id\";\"event_type\";\"event_key\";\"event_text\";\"timestamp (ISO)\"")
 
+    ''' Logs input statistics for a single trial
+    
+        @param trial: Current trial object presented in a test
+        @param transcribed_text: The text written by the user
+        @param time_needed: The time needed to write the whole sentence
+        @param wpm: Words per minute ratio
+    '''
     def log_stats(self, trial, transcribed_text, time_needed, wpm):
         transcribed_text = re.sub('\s\s', ' ', transcribed_text)
         transcribed_text = re.sub('\n', '', transcribed_text)
@@ -217,6 +301,12 @@ class TestLogger(object):
             self.stats_out.writerow(current_values)
         return
 
+    ''' Logs a keyboard event like pressing/releasing a button
+    
+        @param type: The type of the event
+        @param key: The key(s) involved in the keyboard event
+        @param text: The text received from the input event
+    '''
     def log_event(self, type, key, text):
         if key == QtCore.Qt.Key_Return:
             key = "return"
@@ -237,25 +327,26 @@ class TestLogger(object):
         return
 
     ''' Returns a timestamp'''
-
     @staticmethod
     def timestamp():
         return QtCore.QDateTime.currentDateTime().toString(QtCore.Qt.ISODate)
 
+    ''' Tells the logger to stop outputting anything to stdout'''
     def disable_stdout_logging(self):
         self.log_to_stdout = False
         return
 
+    ''' Tells the logger to stop outputting anything to a csv-file'''
     def disable_file_logging(self):
         self.log_to_file = False
         return
-
 
 class Trial:
     """
         Stores the settings for a single trial of the experiment
 
         @param text_input_technique: The text input technique. This can be chord input or standard QWERTZ input
+        @param text: The sentence the user has to type to complete this trial
     """
 
     TRAINING_SENTENCES = ["der Mann ging im Herbst mal allein spazieren", "der Junge weiß echt nicht was er tut",
@@ -276,6 +367,13 @@ class Trial:
         self.text_input_technique = text_input_technique
         self.text = text
 
+    ''' Creates a randomized list of trials
+    
+        @param conditions: A list of conditions to create appropriate Trials
+        @param repetitions: Determines how often a set of sentences is added to the list returned
+        
+        @return: A list of Trial objects
+    '''
     @staticmethod
     def create_list_from_conditions(conditions, repetitions):
         trials = []
@@ -287,6 +385,12 @@ class Trial:
                 trials.append(Trial(conditions[i], Trial.get_sentence_from_list(len(trials))))
         return trials
 
+    ''' Helper for getting a single sentence from the SENTENCES list
+    
+        @param idx: The index of the sentence we want
+        
+        @return: The sentence at position idx in the SENTENCES list
+    '''
     @staticmethod
     def get_sentence_from_list(idx):
         if idx < len(Trial.SENTENCES):
@@ -294,12 +398,21 @@ class Trial:
         else:
             return Trial.SENTENCES[len(Trial.SENTENCES) - 1 - idx]
 
+    ''' Get the text the user has to write for this trial'''
     def get_text(self):
         return self.text
 
+    ''' Get the input technique that is used performing this trial'''
     def get_text_input_technique(self):
         return self.text_input_technique
 
+    ''' Creates a list of sentences from the TRAINING_SENTENCES list
+    
+        @param input_technique: The input technique used to perform the training
+        @param repetitions: Determines how often a set of training sentences is added to the list returned
+        
+        @return: A list with Trials for a training session
+    '''
     @staticmethod
     def get_training_set(input_technique, repetitions):
         training_trials = []

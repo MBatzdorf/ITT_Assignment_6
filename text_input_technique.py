@@ -7,6 +7,12 @@ import re
 
 
 class StandardInputMethod(QtCore.QObject):
+
+    """
+        Input filter for qt textedit fields representing the input technique
+        Base class for all input techniques
+    """
+
     VALID_LETTERS = "[a-zäöüß]"
     ALLOWED_COMMANDS_KEYS = [QtCore.Qt.Key_Return, QtCore.Qt.Key_Space, QtCore.Qt.Key_Shift, QtCore.Qt.Key_Backspace]
 
@@ -14,9 +20,17 @@ class StandardInputMethod(QtCore.QObject):
         super(StandardInputMethod, self).__init__()
         self.keys = []
 
+    ''' Helper for getting the currently typed word'''
     def get_word(self):
         return "".join(self.keys)
 
+    ''' Actual filtering method for input events
+    
+        Only passes the input event if valid letters were entered or a valid keyboard command was given
+    
+        @param watched_textedit: the Qt text edit field the user typed into
+        @param ev: The input event
+    '''
     def eventFilter(self, watched_textedit, ev):
         if not ev.spontaneous():
             return False  # ignore events that we injected ourselves
@@ -46,6 +60,15 @@ class StandardInputMethod(QtCore.QObject):
 
 
 class ChordInputMethod(StandardInputMethod):
+
+    """
+        Advanced Input filter for qt textedit fields
+        Combinations of keyboard buttons are mapped to whole words
+        Allows the user to type whole words by pressing all containing letters at once on the keyboard
+        in addition to normal typing
+    """
+
+    ''' The chord list defining all mappings between multiple keyboard buttons and a single word'''
     CHORDS = {
         frozenset(["a", "s", "d"]): "das",
         frozenset(["w", "s", "a"]): "was",
@@ -125,6 +148,7 @@ class ChordInputMethod(StandardInputMethod):
         self.keys = []
         self.chords = ChordInputMethod.CHORDS
 
+    ''' Returns the currently typed word or a whole word at once if a corresponding mapping is found in the chord set above'''
     def get_word(self):
         try:
             return self.chords[frozenset(self.keys)] + ""
